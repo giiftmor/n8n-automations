@@ -2,7 +2,7 @@
 
 ## Overview
 
-Polls Gmail inbox every minute, uses an Ollama AI agent (deepseek-coder-v2:16b) to classify each email into one of six categories, and applies the corresponding Gmail label.
+Polls Gmail inbox every minute, uses an Ollama AI agent (qwen2.5-coder:14b) to classify each email into one of six categories, and applies the corresponding Gmail label.
 
 ## Trigger
 
@@ -22,17 +22,16 @@ Polls Gmail inbox every minute, uses an Ollama AI agent (deepseek-coder-v2:16b) 
 ### 2. Gmail (Get full message)
 - **Type:** `n8n-nodes-base.gmail`
 - **Operation:** `get`
+- **Simple mode:** `true` — outputs structured JSON with `from`, `to`, `subject`, `text`, `labelIds`, `headers`
 - **Input:** `{{ $json.id }}` from trigger
-- **Purpose:** Retrieves full message content including headers, body, labels
+- **Purpose:** Retrieves full message content in simplified format
 
 ### 3. AI Agent
 - **Type:** `@n8n/n8n-nodes-langchain.agent`
-- **Model:** Ollama Chat Model (`deepseek-coder-v2:16b`)
-- **System prompt:** Long classification prompt with label descriptions, prior-email-history checks
+- **Model:** Ollama Chat Model (`qwen2.5-coder:14b`)
+- **System prompt:** Classification prompt with 6 label definitions
 - **Output parser:** Structured Output Parser (JSON schema: `{ label, label ID }`)
-- **Tools:**
-  - **Get Email** (`gmailTool`) — searches inbox for prior emails from sender
-  - **Check Sent** (`gmailTool`) — searches sent folder for prior emails to sender
+- **Tools:** None — classification uses only email content + existing labels
 
 ### 4. Gmail1 (Apply label)
 - **Type:** `n8n-nodes-base.gmail`
@@ -43,10 +42,8 @@ Polls Gmail inbox every minute, uses an Ollama AI agent (deepseek-coder-v2:16b) 
 ## Data Flow
 
 1. **Gmail Trigger** polls inbox → new message IDs
-2. **Gmail** fetches full message data (headers, body, labels)
-3. **AI Agent** receives message data + runs classification using:
-   - Prior email history lookups (Get Email + Check Sent tools)
-   - 6-category classification system
+2. **Gmail** fetches full message data (simplified format: from, to, subject, body, labels, headers)
+3. **AI Agent** classifies email into one of 6 categories based on content + existing labels
 4. **Structured Output Parser** extracts `{ label, label ID }` from AI response
 5. **Gmail1** applies the label to the original message
 
@@ -66,7 +63,7 @@ Polls Gmail inbox every minute, uses an Ollama AI agent (deepseek-coder-v2:16b) 
 - **Credentials:**
   - `gmailOAuth2` — Primary Email Account [neo7moruri]
   - `ollamaApi` — Ollama Models (evo:11434)
-- **Model:** `deepseek-coder-v2:16b` on evo
+- **Model:** `qwen2.5-coder:14b` on evo
 
 ## Related
 
