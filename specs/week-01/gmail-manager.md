@@ -2,7 +2,7 @@
 
 ## Overview
 
-Polls Gmail inbox every minute, uses an Ollama AI agent (qwen2.5-coder:14b) to classify each email into one of six categories, and applies the corresponding Gmail label.
+Polls Gmail inbox every minute, uses an Ollama AI agent (hhao/qwen2.5-coder-tools:14b) to classify each email into one of six categories, and applies the corresponding Gmail label.
 
 ## Trigger
 
@@ -28,10 +28,10 @@ Polls Gmail inbox every minute, uses an Ollama AI agent (qwen2.5-coder:14b) to c
 
 ### 3. AI Agent
 - **Type:** `@n8n/n8n-nodes-langchain.agent`
-- **Model:** Ollama Chat Model (`qwen2.5-coder:14b`)
-- **System prompt:** Classification prompt with 6 label definitions
+- **Model:** Ollama Chat Model (`hhao/qwen2.5-coder-tools:14b`)
+- **System prompt:** Classification prompt with 6 label definitions + explicit JSON output format instruction
 - **Output parser:** Structured Output Parser (JSON schema: `{ label, label ID }`)
-- **Tools:** None — classification uses only email content + existing labels
+- **Tools:** None — n8n's LangChain Ollama integration does not support tool binding
 
 ### 4. Gmail1 (Apply label)
 - **Type:** `n8n-nodes-base.gmail`
@@ -63,7 +63,7 @@ Polls Gmail inbox every minute, uses an Ollama AI agent (qwen2.5-coder:14b) to c
 - **Credentials:**
   - `gmailOAuth2` — Primary Email Account [neo7moruri]
   - `ollamaApi` — Ollama Models (evo:11434)
-- **Model:** `qwen2.5-coder:14b` on evo
+- **Model:** `hhao/qwen2.5-coder-tools:14b` on evo
 
 ## Related
 
