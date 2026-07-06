@@ -1,0 +1,118 @@
+{
+  "properties": {
+    "connectionReferences": {
+      "shared_sharepointonline": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "new_sharedsharepointonline_27910"
+        },
+        "api": { "name": "shared_sharepointonline" }
+      },
+      "shared_office365": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "new_sharedoffice365_81835"
+        },
+        "api": { "name": "shared_office365" }
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "undefined",
+      "parameters": {
+        "$authentication": { "defaultValue": {}, "type": "SecureObject" },
+        "$connections": { "defaultValue": {}, "type": "Object" }
+      },
+      "triggers": {
+        "manual": {
+          "type": "Request",
+          "kind": "Http",
+          "inputs": {
+            "triggerAuthenticationType": "All",
+            "schema": {
+              "id": "{{ $json.id }}",
+              "userName": "{{ $json.userName }}",
+              "userId": "{{ $json.userId }}",
+              "userEmail": "{{ $json.userEmail }}",
+              "tech": "{{ $json.tech }}",
+              "techID": "{{ $json.techID }}",
+              "techEmail": "{{ $json.techEmail }}",
+              "date": "{{ $json.date }}",
+              "status": "{{ $json.status }}"
+            }
+          }
+        }
+      },
+      "actions": {
+        "Apply_to_each": {
+          "foreach": "@triggerBody()",
+          "actions": {
+            "Parse_JSON": {
+              "type": "ParseJson",
+              "inputs": {
+                "content": "@items('Apply_to_each')",
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "string" },
+                    "userName": { "type": "string" },
+                    "userId": { "type": "string" },
+                    "userEmail": { "type": "string" },
+                    "tech": { "type": "string" },
+                    "techID": { "type": "string" },
+                    "techEmail": { "type": "string" },
+                    "date": { "type": "string" },
+                    "status": { "type": "string" }
+                  }
+                }
+              }
+            },
+            "Get_items": {
+              "runAfter": { "Parse_JSON": ["Succeeded"] },
+              "type": "OpenApiConnection",
+              "inputs": {
+                "parameters": {
+                  "dataset": "https://nwuac.sharepoint.com/sites/IT-SD-SSPC",
+                  "table": "51c44ebd-e1aa-43c6-890b-265365f00224",
+                  "$filter": "Title eq @{body('Parse_JSON')?['techID']}"
+                },
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                  "operationId": "GetItems",
+                  "connectionName": "shared_sharepointonline"
+                }
+              }
+            },
+            "For_each": {
+              "foreach": "@outputs('Get_items')?['body/value']",
+              "actions": {
+                "Send_an_email_(V2)": {
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "parameters": {
+                      "emailMessage/To": "IT-SD-testing@nwu.ac.za;Randal.Mokwena@nwu.ac.za;Neo.Moruri@nwu.ac.za;Quinton.Nell@nwu.ac.za",
+                      "emailMessage/Subject": "Service Rating - ",
+                      "emailMessage/Body": "<style>:root{color-scheme:light dark;supported-color-schemes:light dark}body{margin:0;padding:0}table{mso-table-lspace:0;mso-table-rspace:0}@media screen and (max-width:600px){.sm-wrap{padding:20px 10px!important}.sm-hdr{padding:24px!important}.sm-body{padding:24px!important}.sm-ftr{padding:20px 24px!important}.sm-btn{margin:24px 0!important}.sm-logo{width:90px!important}.sm-acr{width:65px!important}.sm-h2{font-size:11px!important}.sm-h1{font-size:18px!important}.sm-txt{font-size:14px!important;line-height:1.5!important}.sm-meta{font-size:12px!important}.sm-sig{font-size:13px!important}.sm-hdr-inner{padding:0!important}.sm-ftrtxt{font-size:10px!important}}</style><table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" style=\"background-color:#f4f6f9\"><tr><td class=\"sm-wrap\" style=\"padding:40px 20px;background-color:#f4f6f9\"><table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" style=\"max-width:700px;width:100%;margin:0 auto;background-color:#fff;border-collapse:separate;border-spacing:0;border-radius:8px;border:1px solid #78848e;box-shadow:0 4px 12px rgba(0,0,0,.05)\"><tr><td class=\"sm-hdr\" style=\"background-color:#6c3d91;padding:35px;border-bottom:4px solid #00889c;text-align:left;border-radius:8px 8px 0 0\"><table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" style=\"border-collapse:collapse\"><tr><td class=\"sm-hdr-inner\" style=\"padding:0 40px 0 0\"><table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" style=\"border-collapse:collapse\"><tr><td style=\"padding-right:15px\"><img src=\"https://services.nwu.ac.za/sites/services.nwu.ac.za/files/files/designs-branding/NWU-Stacked-Logo-White-Digital.png\" alt=\"North-West University Logo\" width=\"120\" class=\"sm-logo\" style=\"display:block;border:0;outline:none\"></td><td style=\"text-align:left\"><h2 class=\"sm-h2\" style=\"font-size:12px;text-transform:uppercase;letter-spacing:2px;color:#fff;font-weight:bold;margin:0 0 6px 0;font-family:Arial,sans-serif;line-height:1.2\">POTCHEFSTROOM CAMPUS</h2><h1 class=\"sm-h1\" style=\"font-size:22px;margin:0;font-weight:normal;color:#fff;font-family:Arial,sans-serif;line-height:1.3\">IT Service Desk:<br>Service Rating</h1></td></tr></table></td></tr></table></td></tr><tr><td class=\"sm-body sm-txt\" style=\"padding:40px;color:#334155;font-size:15px;line-height:1.6;font-family:Arial,sans-serif;text-align:left\"><p style=\"margin:0 0 20px 0;font-family:Arial,sans-serif\">Dear <strong>@{body('Parse_JSON')?['userName']}</strong>,</p><p style=\"margin:0 0 20px 0;font-family:Arial,sans-serif\">Your recent IT support ticket has been flagged as completely resolved. To ensure our campus infrastructure and support diagnostics consistently align with the university's commitment to operational excellence, we request your analytical feedback on this technical iteration.</p><table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin-bottom:25px;border-collapse:collapse\"><tr><td class=\"sm-meta\" style=\"background-color:#f8fafc;border-left:4px solid #78848e;padding:15px 20px\"><p style=\"font-size:13px;color:#556370;margin:0 0 4px 0;font-family:Arial,sans-serif\"><strong style=\"color:#6c3d91\">Assigned Analyst:</strong> @{body('Parse_JSON')?['tech']}</p><p style=\"font-size:13px;color:#556370;margin:0;font-family:Arial,sans-serif\"><strong style=\"color:#6c3d91\">Campus:</strong> Potchefstroom</p></td></tr></table><p style=\"margin:0 0 25px 0;font-family:Arial,sans-serif\">Please take a moment to pass your operational data back into our telemetry loop by completing the Service Rating link below. Your response provides critical metrics that allow us to tune our desktop deployment pipelines and service desk responses.</p><table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" class=\"sm-btn\" style=\"margin:35px 0;table-layout:auto\"><tr><td style=\"text-align:center\"><table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" style=\"border-collapse:separate;margin:0 auto\"><tr><td style=\"border-radius:4px;background-color:#00889c\"><a href=\"@{items('For_each')?['Service_x0020_Rating_x0020_Form_']}\" style=\"font-size:14px;font-weight:bold;color:#fff;text-decoration:none;padding:14px 35px;display:inline-block;font-family:Arial,sans-serif;letter-spacing:.5px;text-transform:uppercase\">Submit Service Rating</a></td></tr></table></td></tr></table><p style=\"margin:0 0 30px 0;font-family:Arial,sans-serif\">If you believe this ticket requires further troubleshooting iterations or was finalized prematurely, please drop an automated notification back to our support track immediately.</p><table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" style=\"border-collapse:collapse\"><tr><td class=\"sm-sig\" style=\"font-size:14px;line-height:1.5;font-family:Arial,sans-serif;color:#334155;text-align:left\">Kind regards,<br><strong>IT Service Desk</strong><br><span style=\"color:#6c3d91;font-weight:bold\">North-West University</span></td><td style=\"text-align:right;width:90px\"><img src=\"https://services.nwu.ac.za/sites/services.nwu.ac.za/files/files/designs-branding/NWU-Acronym-Logo-Purple-Digital.png\" alt=\"NWU Acronym Mark\" width=\"85\" class=\"sm-acr\" style=\"display:block;border:0;outline:none;margin-left:auto\"></td></tr></table></td></tr><tr><td class=\"sm-ftr sm-ftrtxt\" style=\"background-color:#f8fafc;padding:25px 40px;text-align:center;font-size:11px;color:#78848e;border-top:4px solid #00889c;font-family:Arial,sans-serif;line-height:1.6;border-radius:0 0 8px 8px\"><p style=\"margin:0 0 8px 0;font-family:Arial,sans-serif\">This transmission is an automated operational notification generated by the NWU IT Service Desk.</p><p style=\"margin:0 0 8px 0;font-family:Arial,sans-serif;color:#556370\">For assistance contact: <a href=\"mailto:Talk2IT@nwu.ac.za\" style=\"color:#00889c;text-decoration:underline;font-weight:bold\">Talk2IT@nwu.ac.za</a></p><p style=\"margin:0;font-family:Arial,sans-serif\">Visit the official <a href=\"https://services.nwu.ac.za/ithome\" style=\"color:#00889c;text-decoration:underline;font-weight:bold\">NWU IT Home</a> for direct systems assistance.</p></td></tr></table></td></tr></table>",
+                      "emailMessage/Importance": "Normal"
+                    },
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                      "operationId": "SendEmailV2",
+                      "connectionName": "shared_office365"
+                    }
+                  }
+                }
+              },
+              "runAfter": { "Get_items": ["Succeeded"] },
+              "type": "Foreach"
+            }
+          },
+          "runAfter": {},
+          "type": "Foreach"
+        }
+      }
+    },
+    "templateName": null
+  },
+  "schemaVersion": "1.0.0.0"
+}

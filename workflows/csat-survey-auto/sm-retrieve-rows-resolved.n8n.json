@@ -1,0 +1,196 @@
+{
+  "name": "SM Retrieve Rows Resolved",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-144, -480],
+      "id": "4f8ad684-eaaf-43b0-b63a-f262cfd41815",
+      "name": "When clicking 'Execute workflow'"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://6eec0cd8b5ddec51a4f422b5f26e2b.49.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/463ff55467564cf9b44f1eb9faf4e56d/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=8X9h6yHJGfbknjwNn99bOEQ88kaXisFU_tK9bzt53oo",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "=[\n  {\n  \"id\":  \"{{ $json.id }}\",\n  \"userName\": \"{{ $json.userName }}\",\n  \"userId\": \"{{ $json.userId }}\",\n  \"userEmail\": \"{{ $json.userEmail }}\",\n  \"tech\": \"{{ $json.tech }}\",\n  \"techID\": \"{{ $json.techID }}\",\n  \"techEmail\": \"{{ $json.techEmail }}\",\n  \"date\": \"{{ $json.date }}\",\n  \"status\": \"{{ $json.status }}\"\n  }\n]",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [1520, -416],
+      "id": "dd3198ef-5cf5-4cae-b77b-a3845b4f30b7",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "USE CiresonAnalytics;\n-- Active Service Requests that are Completed yesterday for specified Tiers\nSELECT \n    WorkItemId,\n    Title,\n    CreatedByUser,\n    Category,\n    Tier,\n    Description,\n    AffectedUser,\n    AssignedUser,\n    Status,\n    Created,\n    CompletedDate,\n    LastModified,\n    ClosedDate\nFROM dbo.SM_WorkItem_ServiceRequest\nWHERE Status = 'Completed'\n  AND CAST(CompletedDate AS DATE) = CAST(DATEADD(DAY, -1, GETDATE()) AS DATE)\n  AND Tier IN ('Potch Staff Service Desk', 'Potch Student Service Desk');\n\n-- Active Incidents that are Resolved yesterday for specified Tiers\nSELECT \n    WorkItemId,\n    Title,\n    CreatedByUser,\n    Category,\n    Tier,\n    Description,\n    AssignedUser,\n    AffectedUser,\n    Status,\n    Created,\n    ResolvedDate,\n    LastModified,\n    ClosedDate\nFROM dbo.SM_WorkItem_Incident\nWHERE Status = 'Resolved'\n  AND CAST(ResolvedDate AS DATE) = CAST(DATEADD(DAY, -1, GETDATE()) AS DATE)\n  AND Tier IN ('Potch Staff Service Desk', 'Potch Student Service Desk');",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1.1,
+      "position": [80, -384],
+      "id": "330bd3e0-8366-40b8-8430-833eaba87317",
+      "name": "Get Tickets Done Today",
+      "credentials": {
+        "microsoftSql": {
+          "id": "FHbJvXzEv35eLNHI",
+          "name": "Service Manager"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => ({\n  json: {\n    id: item.json.WorkItemId,\n    user: item.json.AffectedUser,\n    tech: item.json.AssignedUser,\n    dateDone: item.json.CompletedDate || item.json.ResolvedDate,\n    status: item.json.Status\n  }\n}))"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [304, -384],
+      "id": "126df379-48d6-4c1a-b564-8c8ee5c5764e",
+      "name": "Clean Ticket Data"
+    },
+    {
+      "parameters": {
+        "jsCode": "const ticketData = $(\"Clean Ticket Data\").all();\nconst endUserInfo = $(\"Clean End_User Info\").all();\nconst analystInfo = $(\"Clean Analyst/Tech Info\").all();\n\nconst response = ticketData.map(ticket => {\n  const userDetails = endUserInfo.find(u => {\n    return u.json.user && ticket.json.user && u.json.user.trim() === ticket.json.user.trim();\n  });\n  const techDetails = analystInfo.find(t => {\n    return t.json.tech && ticket.json.tech && t.json.tech.trim() === ticket.json.tech.trim();\n  });\n\n  return {\n    json: {\n      id: ticket.json.id,\n      userName: ticket.json.user,\n      userId: userDetails ? userDetails.json.userID : null,\n      userEmail: userDetails ? userDetails.json.userEmail : null,\n      tech: ticket.json.tech,\n      techID: techDetails ? techDetails.json.techID : null,\n      techEmail: techDetails ? techDetails.json.techEmail : null,\n      date: ticket.json.dateDone,\n      status: ticket.json.status\n    }\n  };\n});\n\nreturn response;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1296, -416],
+      "id": "79d43ff8-c041-43e8-a79c-53f74c4a3e17",
+      "name": "Append Ticket with User's Contacts"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 7-17 * * 1-5"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [-144, -288],
+      "id": "f79d39e5-73f8-403b-8632-3ed9cc6657d8",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT [DisplayName]\n  ,[UserName_6AF77E23_669B_123F_B392_323C17097BBD]\n  ,[UPN_7641DFF7_7A20_DC04_FC1C_B6FA8715DA02]\nFROM [ServiceManager].[dbo].[MTV_System$Domain$User]\nWHERE [DisplayName] = '{{$json.user}}';",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1.1,
+      "position": [528, -480],
+      "id": "7eb335da-7cfc-4904-9e7a-8dc2e2619d61",
+      "name": "Get End_Users Details",
+      "credentials": {
+        "microsoftSql": {
+          "id": "FHbJvXzEv35eLNHI",
+          "name": "Service Manager"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => ({\n  json: {\n    user: item.json.DisplayName,\n    userID: item.json.UserName_6AF77E23_669B_123F_B392_323C17097BBD,\n    userEmail: item.json.UPN_7641DFF7_7A20_DC04_FC1C_B6FA8715DA02\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [752, -480],
+      "id": "3bc1fee2-7ac7-4047-ace9-3195d8a017ec",
+      "name": "Clean End_User Info"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => ({\n  json: {\n    tech: item.json.DisplayName,\n    techID: item.json.UserName_6AF77E23_669B_123F_B392_323C17097BBD,\n    techEmail: item.json.UPN_7641DFF7_7A20_DC04_FC1C_B6FA8715DA02\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [752, -288],
+      "id": "68102aca-4b00-4816-becf-9cc7e10c43c9",
+      "name": "Clean Analyst/Tech Info"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT [DisplayName]\n  ,[UserName_6AF77E23_669B_123F_B392_323C17097BBD]\n  ,[UPN_7641DFF7_7A20_DC04_FC1C_B6FA8715DA02]\nFROM [ServiceManager].[dbo].[MTV_System$Domain$User]\nWHERE [DisplayName] = '{{$('Clean Ticket Data').item.json.tech}}';",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1.1,
+      "position": [528, -288],
+      "id": "18b774c8-04a8-4666-b90f-69c5a5d768d5",
+      "name": "Get Analyst's Details",
+      "credentials": {
+        "microsoftSql": {
+          "id": "FHbJvXzEv35eLNHI",
+          "name": "Service Manager"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [1088, -400],
+      "id": "5b774ed8-779c-40fe-b741-16d2e9f41584",
+      "name": "Merge"
+    }
+  ],
+  "pinData": {
+    "When clicking 'Execute workflow'": [
+      {
+        "json": {},
+        "pairedItem": { "item": 0 }
+      }
+    ]
+  },
+  "connections": {
+    "When clicking 'Execute workflow'": {
+      "main": [[{ "node": "Get Tickets Done Today", "type": "main", "index": 0 }]]
+    },
+    "Get Tickets Done Today": {
+      "main": [[{ "node": "Clean Ticket Data", "type": "main", "index": 0 }]]
+    },
+    "Clean Ticket Data": {
+      "main": [[
+        { "node": "Get End_Users Details", "type": "main", "index": 0 },
+        { "node": "Get Analyst's Details", "type": "main", "index": 0 }
+      ]]
+    },
+    "Append Ticket with User's Contacts": {
+      "main": [[{ "node": "HTTP Request", "type": "main", "index": 0 }]]
+    },
+    "Schedule Trigger": {
+      "main": [[{ "node": "Get Tickets Done Today", "type": "main", "index": 0 }]]
+    },
+    "Get End_Users Details": {
+      "main": [[{ "node": "Clean End_User Info", "type": "main", "index": 0 }]]
+    },
+    "Clean End_User Info": {
+      "main": [[{ "node": "Merge", "type": "main", "index": 0 }]]
+    },
+    "Clean Analyst/Tech Info": {
+      "main": [[{ "node": "Merge", "type": "main", "index": 1 }]]
+    },
+    "Get Analyst's Details": {
+      "main": [[{ "node": "Clean Analyst/Tech Info", "type": "main", "index": 0 }]]
+    },
+    "Merge": {
+      "main": [[{ "node": "Append Ticket with User's Contacts", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "tags": []
+}
